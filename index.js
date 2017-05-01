@@ -37,6 +37,7 @@ const SECTION_TYPES = {
   'MBRF': { type: SECTION_APPEND },
   'UNIS': { type: SECTION_FULL_OVERWRITE, minSize: 4048 },
   'UNIx': { type: SECTION_FULL_OVERWRITE, minSize: 4168 },
+  'MRGN': { type: SECTION_APPEND },
 }
 
 const SPRITE_ID_MAX = 516
@@ -359,6 +360,11 @@ export default class Chk {
 
     [this.units, this.sprites] =
       this._parseUnits(sections.section('UNIT'), sections.section('THG2'))
+    
+    if(sections.get('MRGN') === undefined) // Melee maps may not have a location section
+      this.locations = [];
+    else
+      this.locations = this._parseLocations(sections.section('MRGN'));
   }
 
   static createStream(callback) {
@@ -782,6 +788,27 @@ export default class Chk {
       pos = pos + 10
     }
     return [units, sprites]
+  }
+
+  _parseLocations(locationData) {
+    const locations = []
+    let pos = 0
+    while(pos + 20 <= locationData.length) {
+      const left = locationData.readUInt32LE(pos+0);
+      const top = locationData.readUInt32LE(pos+4);
+      const right = locationData.readUInt32LE(pos+8);
+      const bottom = locationData.readUInt32LE(pos+12);
+      const nameId = locationData.readUInt16LE(pos+16);
+      const elevationFlags = locationData.readUInt16LE(pos+18);
+      const name = this._strings.get(nameId);
+      if(nameId != 0) // Unused
+      {
+        locations.push({left,top,right,bottom,name,elevationFlags});
+      }
+      
+      pos = pos + 20;
+    }
+    return locations;
   }
 }
 
